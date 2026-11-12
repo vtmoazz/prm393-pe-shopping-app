@@ -147,5 +147,34 @@ void main() {
       expect(totalRevenue(filterOrders(orders, RevenuePeriod.month, day)), 300);
       expect(totalRevenue(filterOrders(orders, RevenuePeriod.day, day)), 100);
     });
+
+    test('revenue chart buckets', () {
+      final orders = [
+        OrderRecord(id: 1, total: 100, createdAt: DateTime(2026, 11, 12, 9), itemCount: 1),
+        OrderRecord(id: 2, total: 50, createdAt: DateTime(2026, 11, 12, 9, 30), itemCount: 1),
+        OrderRecord(id: 3, total: 200, createdAt: DateTime(2026, 11, 3), itemCount: 1),
+        OrderRecord(id: 4, total: 400, createdAt: DateTime(2026, 5, 1), itemCount: 1),
+        OrderRecord(id: 5, total: 800, createdAt: DateTime(2025, 11, 12), itemCount: 1),
+      ];
+      final day = DateTime(2026, 11, 12);
+
+      final hours = revenueBuckets(orders, RevenuePeriod.day, day);
+      expect(hours, hasLength(24));
+      expect(hours[9].value, 150);
+
+      final days = revenueBuckets(orders, RevenuePeriod.month, day);
+      expect(days, hasLength(30));
+      expect(days[2].value, 200);
+      expect(days[11].value, 150);
+
+      final months = revenueBuckets(orders, RevenuePeriod.year, day);
+      expect(months, hasLength(12));
+      expect(months[4].value, 400);
+      expect(months[10].value, 350);
+
+      final years = revenueBuckets(orders, RevenuePeriod.all, day);
+      expect(years.map((b) => b.label), ['2025', '2026']);
+      expect(years.map((b) => b.value), [800, 750]);
+    });
   });
 }

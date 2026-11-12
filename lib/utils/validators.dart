@@ -33,4 +33,5 @@ String? validatePrice(String? value) {
   return price <= 0 ? 'Price must be greater than 0' : null;
 }
 
-String hashPassword(String password) => sha256.convert(utf8.encode(password)).toString();
+String hashPassword(String password) =>
+    sha256.convert(utf8.encode(password)).toString();

@@ -7,6 +7,7 @@ import 'data/app_database.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/product_provider.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,11 +55,7 @@ class _ShopAppState extends State<ShopApp> {
       child: MaterialApp.router(
         title: 'PRM393 Shop',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-          inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
-          snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-        ),
+        theme: buildAppTheme(),
         routerConfig: _router,
       ),
     );

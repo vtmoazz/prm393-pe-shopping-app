@@ -6,15 +6,25 @@ import '../models/models.dart';
 import '../providers/cart_provider.dart';
 
 /// Adds [product] to the cart and confirms with a SnackBar.
-Future<void> addToCartWithFeedback(BuildContext context, Product product, {int quantity = 1}) async {
+Future<void> addToCartWithFeedback(
+  BuildContext context,
+  Product product, {
+  int quantity = 1,
+}) async {
   final messenger = ScaffoldMessenger.of(context);
   await context.read<CartProvider>().add(product, quantity: quantity);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Text('Added ${product.name} to cart'),
-      action: SnackBarAction(label: 'VIEW CART', onPressed: () => context.push('/cart')),
-    ));
+    ..showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text('Added ${product.name} to cart'),
+        action: SnackBarAction(
+          label: 'VIEW CART',
+          onPressed: () => context.push('/cart'),
+        ),
+      ),
+    );
 }
 
 /// App bar cart icon with the number of items.
@@ -29,8 +39,10 @@ class CartIconButton extends StatelessWidget {
       onPressed: () => context.push('/cart'),
       icon: Badge(
         isLabelVisible: count > 0,
+        backgroundColor: const Color(0xFFFFC15E),
+        textColor: const Color(0xFF1B1640),
         label: Text('$count'),
-        child: const Icon(Icons.shopping_cart_outlined),
+        child: const Icon(Icons.shopping_bag_outlined),
       ),
     );
   }

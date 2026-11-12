@@ -12,18 +12,18 @@ class AppUser {
   });
 
   factory AppUser.fromMap(Map<String, Object?> map) => AppUser(
-        id: map['id'] as int?,
-        fullName: map['full_name'] as String,
-        email: map['email'] as String,
-        passwordHash: map['password_hash'] as String,
-      );
+    id: map['id'] as int?,
+    fullName: map['full_name'] as String,
+    email: map['email'] as String,
+    passwordHash: map['password_hash'] as String,
+  );
 
   Map<String, Object?> toMap() => {
-        if (id != null) 'id': id,
-        'full_name': fullName,
-        'email': email,
-        'password_hash': passwordHash,
-      };
+    if (id != null) 'id': id,
+    'full_name': fullName,
+    'email': email,
+    'password_hash': passwordHash,
+  };
 }
 
 class Product {
@@ -44,20 +44,20 @@ class Product {
   });
 
   factory Product.fromMap(Map<String, Object?> map) => Product(
-        id: map['id'] as int?,
-        name: map['name'] as String,
-        description: map['description'] as String,
-        price: (map['price'] as num).toDouble(),
-        image: map['image'] as String?,
-      );
+    id: map['id'] as int?,
+    name: map['name'] as String,
+    description: map['description'] as String,
+    price: (map['price'] as num).toDouble(),
+    image: map['image'] as String?,
+  );
 
   Map<String, Object?> toMap() => {
-        if (id != null) 'id': id,
-        'name': name,
-        'description': description,
-        'price': price,
-        'image': image,
-      };
+    if (id != null) 'id': id,
+    'name': name,
+    'description': description,
+    'price': price,
+    'image': image,
+  };
 
   Product copyWith({
     int? id,
@@ -65,14 +65,13 @@ class Product {
     String? description,
     double? price,
     String? image,
-  }) =>
-      Product(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        description: description ?? this.description,
-        price: price ?? this.price,
-        image: image ?? this.image,
-      );
+  }) => Product(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    price: price ?? this.price,
+    image: image ?? this.image,
+  );
 }
 
 class CartItem {
@@ -98,9 +97,9 @@ class OrderRecord {
   });
 
   factory OrderRecord.fromMap(Map<String, Object?> map) => OrderRecord(
-        id: map['id'] as int,
-        total: (map['total'] as num).toDouble(),
-        createdAt: DateTime.parse(map['created_at'] as String),
-        itemCount: (map['item_count'] as num?)?.toInt() ?? 0,
-      );
+    id: map['id'] as int,
+    total: (map['total'] as num).toDouble(),
+    createdAt: DateTime.parse(map['created_at'] as String),
+    itemCount: (map['item_count'] as num?)?.toInt() ?? 0,
+  );
 }

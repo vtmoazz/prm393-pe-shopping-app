@@ -12,9 +12,13 @@ class AppDatabase {
   static const _version = 1;
 
   /// Opens the app database. [path] lets tests use an in-memory database.
-  static Future<AppDatabase> open({String? path, DatabaseFactory? factory}) async {
+  static Future<AppDatabase> open({
+    String? path,
+    DatabaseFactory? factory,
+  }) async {
     final dbFactory = factory ?? databaseFactory;
-    final dbPath = path ?? p.join(await dbFactory.getDatabasesPath(), 'prm393_shop.db');
+    final dbPath =
+        path ?? p.join(await dbFactory.getDatabasesPath(), 'prm393_shop.db');
     final db = await dbFactory.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
@@ -75,13 +79,15 @@ class AppDatabase {
       name: 'Wireless Headphones',
       description: 'Over-ear Bluetooth headphones with noise cancelling.',
       price: 1290000,
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
+      image:
+          'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
     ),
     Product(
       name: 'Mechanical Keyboard',
       description: '87-key keyboard with hot-swappable switches.',
       price: 890000,
-      image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400',
+      image:
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400',
     ),
     Product(
       name: 'Smart Watch',
@@ -93,7 +99,8 @@ class AppDatabase {
       name: 'USB-C Charger 65W',
       description: 'Fast GaN charger for laptop and phone.',
       price: 450000,
-      image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=400',
+      image:
+          'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=400',
     ),
     Product(
       name: 'Backpack',
@@ -126,10 +133,15 @@ class AppDatabase {
     return rows.map(Product.fromMap).toList();
   }
 
-  Future<int> insertProduct(Product product) => _db.insert('products', product.toMap());
+  Future<int> insertProduct(Product product) =>
+      _db.insert('products', product.toMap());
 
-  Future<void> updateProduct(Product product) =>
-      _db.update('products', product.toMap(), where: 'id = ?', whereArgs: [product.id]);
+  Future<void> updateProduct(Product product) => _db.update(
+    'products',
+    product.toMap(),
+    where: 'id = ?',
+    whereArgs: [product.id],
+  );
 
   Future<void> deleteProduct(int id) =>
       _db.delete('products', where: 'id = ?', whereArgs: [id]);
@@ -137,21 +149,31 @@ class AppDatabase {
   // ---------- Cart ----------
 
   Future<List<CartItem>> getCart(int userId) async {
-    final rows = await _db.rawQuery('''
+    final rows = await _db.rawQuery(
+      '''
       SELECT p.*, c.quantity FROM cart_items c
       JOIN products p ON p.id = c.product_id
       WHERE c.user_id = ?
-      ORDER BY p.name''', [userId]);
+      ORDER BY p.name''',
+      [userId],
+    );
     return rows
-        .map((r) => CartItem(product: Product.fromMap(r), quantity: r['quantity'] as int))
+        .map(
+          (r) => CartItem(
+            product: Product.fromMap(r),
+            quantity: r['quantity'] as int,
+          ),
+        )
         .toList();
   }
 
   Future<void> addToCart(int userId, int productId, {int quantity = 1}) async {
-    await _db.rawInsert('''
+    await _db.rawInsert(
+      '''
       INSERT INTO cart_items(user_id, product_id, quantity) VALUES(?, ?, ?)
       ON CONFLICT(user_id, product_id) DO UPDATE SET quantity = quantity + excluded.quantity''',
-        [userId, productId, quantity]);
+      [userId, productId, quantity],
+    );
   }
 
   Future<void> setCartQuantity(int userId, int productId, int quantity) async {
@@ -168,24 +190,28 @@ class AppDatabase {
   }
 
   Future<void> removeFromCart(int userId, int productId) => _db.delete(
-        'cart_items',
-        where: 'user_id = ? AND product_id = ?',
-        whereArgs: [userId, productId],
-      );
+    'cart_items',
+    where: 'user_id = ? AND product_id = ?',
+    whereArgs: [userId, productId],
+  );
 
   /// Turns the user's cart into an order and empties the cart.
   /// Returns the new order id, or null when the cart is empty.
   Future<int?> checkout(int userId, {DateTime? at}) {
     return _db.transaction((txn) async {
-      final rows = await txn.rawQuery('''
+      final rows = await txn.rawQuery(
+        '''
         SELECT p.name, p.price, c.quantity FROM cart_items c
         JOIN products p ON p.id = c.product_id
-        WHERE c.user_id = ?''', [userId]);
+        WHERE c.user_id = ?''',
+        [userId],
+      );
       if (rows.isEmpty) return null;
 
       final total = rows.fold<double>(
         0,
-        (sum, r) => sum + (r['price'] as num).toDouble() * (r['quantity'] as int),
+        (sum, r) =>
+            sum + (r['price'] as num).toDouble() * (r['quantity'] as int),
       );
       final orderId = await txn.insert('orders', {
         'user_id': userId,
@@ -208,12 +234,15 @@ class AppDatabase {
   // ---------- Orders / revenue ----------
 
   Future<List<OrderRecord>> getOrders(int userId) async {
-    final rows = await _db.rawQuery('''
+    final rows = await _db.rawQuery(
+      '''
       SELECT o.id, o.total, o.created_at, COALESCE(SUM(i.quantity), 0) AS item_count
       FROM orders o LEFT JOIN order_items i ON i.order_id = o.id
       WHERE o.user_id = ?
       GROUP BY o.id
-      ORDER BY o.created_at DESC''', [userId]);
+      ORDER BY o.created_at DESC''',
+      [userId],
+    );
     return rows.map(OrderRecord.fromMap).toList();
   }
 }

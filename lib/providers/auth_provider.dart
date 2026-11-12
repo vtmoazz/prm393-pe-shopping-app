@@ -30,21 +30,31 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Returns an error message, or null on success.
-  Future<String?> register(String fullName, String email, String password) async {
+  Future<String?> register(
+    String fullName,
+    String email,
+    String password,
+  ) async {
     final normalized = email.trim().toLowerCase();
     if (await _db.findUserByEmail(normalized) != null) {
       return 'This email is already registered';
     }
-    await _db.insertUser(AppUser(
-      fullName: fullName.trim(),
-      email: normalized,
-      passwordHash: hashPassword(password),
-    ));
+    await _db.insertUser(
+      AppUser(
+        fullName: fullName.trim(),
+        email: normalized,
+        passwordHash: hashPassword(password),
+      ),
+    );
     return null;
   }
 
   /// Returns an error message, or null on success.
-  Future<String?> login(String email, String password, {required bool rememberMe}) async {
+  Future<String?> login(
+    String email,
+    String password, {
+    required bool rememberMe,
+  }) async {
     final user = await _db.findUserByEmail(email);
     if (user == null || user.passwordHash != hashPassword(password)) {
       return 'Incorrect email or password';

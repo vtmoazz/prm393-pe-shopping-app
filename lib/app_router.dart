@@ -31,13 +31,15 @@ GoRouter buildRouter(AuthProvider auth) {
           GoRoute(path: 'new', builder: (_, _) => const ProductFormScreen()),
           GoRoute(
             path: ':id',
-            builder: (_, state) =>
-                ProductDetailScreen(productId: int.parse(state.pathParameters['id']!)),
+            builder: (_, state) => ProductDetailScreen(
+              productId: int.parse(state.pathParameters['id']!),
+            ),
             routes: [
               GoRoute(
                 path: 'edit',
-                builder: (_, state) =>
-                    ProductFormScreen(productId: int.parse(state.pathParameters['id']!)),
+                builder: (_, state) => ProductFormScreen(
+                  productId: int.parse(state.pathParameters['id']!),
+                ),
               ),
             ],
           ),
