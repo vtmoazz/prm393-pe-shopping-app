@@ -106,11 +106,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 GlassPanel(
                   child: Form(
                     key: _formKey,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _fullName,
                           textCapitalization: TextCapitalization.words,
                           decoration: const InputDecoration(
@@ -121,6 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
@@ -131,6 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _password,
                           obscureText: true,
                           decoration: const InputDecoration(
@@ -141,6 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _confirm,
                           obscureText: true,
                           decoration: const InputDecoration(

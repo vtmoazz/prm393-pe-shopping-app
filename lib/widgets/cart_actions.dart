@@ -17,6 +17,7 @@ Future<void> addToCartWithFeedback(
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
+        persist: false,
         duration: const Duration(seconds: 2),
         content: Text('Added ${product.name} to cart'),
         action: SnackBarAction(

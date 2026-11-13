@@ -104,7 +104,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           child: Form(
             key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -143,6 +142,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   controller: _name,
                   decoration: const InputDecoration(
                     labelText: 'Product name',
@@ -152,6 +152,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   controller: _description,
                   maxLines: 3,
                   decoration: const InputDecoration(
@@ -162,6 +163,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   controller: _price,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -174,6 +176,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   controller: _imageUrl,
                   decoration: InputDecoration(
                     labelText: 'Image URL or local file',
