@@ -66,7 +66,8 @@ class _SePayPaymentScreenState extends State<SePayPaymentScreen> {
       }
       if (_error != null) setState(() => _error = null);
     } catch (e) {
-      if (mounted) setState(() => _error = 'SePay check failed ($e). Retrying...');
+      if (mounted)
+        setState(() => _error = 'SePay check failed ($e). Retrying...');
     } finally {
       _checking = false;
     }

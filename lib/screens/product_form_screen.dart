@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
@@ -73,6 +74,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       description: _description.text.trim(),
       price: double.parse(_price.text.trim()),
       image: image.isEmpty ? null : image,
+      // Edits keep the owning shop; new products belong to the seller.
+      sellerId: _editing?.sellerId ?? context.read<AuthProvider>().user?.id,
     );
     final provider = context.read<ProductProvider>();
     final messenger = ScaffoldMessenger.of(context);

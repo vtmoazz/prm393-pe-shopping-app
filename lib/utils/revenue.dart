@@ -71,3 +71,22 @@ List<RevenueBucket> revenueBuckets(
       ];
   }
 }
+
+/// One shop's line in the admin breakdown.
+typedef ShopRevenue = ({String shop, double total, int orders});
+
+/// Sums per-shop sale rows (see `AppDatabase.getShopSales`) into one line per
+/// shop, best seller first.
+List<ShopRevenue> revenueByShop(Iterable<OrderRecord> sales) {
+  final totals = <String, double>{};
+  final orders = <String, int>{};
+  for (final s in sales) {
+    final shop = s.shopName ?? 'Unknown shop';
+    totals[shop] = (totals[shop] ?? 0) + s.total;
+    orders[shop] = (orders[shop] ?? 0) + 1;
+  }
+  return [
+    for (final shop in totals.keys)
+      (shop: shop, total: totals[shop]!, orders: orders[shop]!),
+  ]..sort((a, b) => b.total.compareTo(a.total));
+}

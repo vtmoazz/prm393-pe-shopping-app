@@ -18,7 +18,10 @@ Future<void> main() async {
   final products = ProductProvider(db);
   final cart = CartProvider(db);
 
-  auth.addListener(() => cart.attachUser(auth.user?.id));
+  auth.addListener(() {
+    products.setViewer(auth.user);
+    cart.attachUser(auth.user);
+  });
   await auth.tryAutoLogin();
   await products.load();
 
@@ -42,7 +45,7 @@ class ShopApp extends StatefulWidget {
 }
 
 class _ShopAppState extends State<ShopApp> {
-  late final _router = buildRouter(widget.auth);
+  late final _router = buildRouter(widget.auth, widget.products);
 
   @override
   Widget build(BuildContext context) {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/models.dart';
+import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/revenue.dart';
@@ -36,18 +38,30 @@ class _RevenueScreenState extends State<RevenueScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allOrders = context.watch<CartProvider>().orders;
+    final cart = context.watch<CartProvider>();
+    final role = context.watch<AuthProvider>().user?.role ?? UserRole.customer;
+    final allOrders = cart.orders;
     final orders = filterOrders(allOrders, _period, _date);
+    final shops = role == UserRole.admin
+        ? revenueByShop(filterOrders(cart.shopSales, _period, _date))
+        : const <ShopRevenue>[];
     final total = totalRevenue(orders);
     final buckets = revenueBuckets(allOrders, _period, _date);
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Revenue')),
+      appBar: AppBar(
+        title: Text(switch (role) {
+          UserRole.customer => 'My orders',
+          UserRole.seller => 'Shop sales',
+          UserRole.admin => 'Platform revenue',
+        }),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         children: [
           _TotalCard(
+            title: role == UserRole.customer ? 'Total spent' : 'Total revenue',
             label: _periodLabel,
             total: total,
             orderCount: orders.length,
@@ -88,6 +102,21 @@ class _RevenueScreenState extends State<RevenueScreen> {
           ],
           const SizedBox(height: 18),
           _BarChart(buckets: buckets),
+          if (role == UserRole.admin) ...[
+            const SizedBox(height: 22),
+            Text(
+              'Revenue by shop',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            if (shops.isEmpty)
+              const Text(
+                'No shop sales in this period',
+                style: TextStyle(color: AppColors.muted),
+              )
+            else
+              _ShopBreakdown(shops: shops),
+          ],
           const SizedBox(height: 22),
           Text(
             'Orders',
@@ -138,6 +167,14 @@ class _RevenueScreenState extends State<RevenueScreen> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
+                          if (order.customerName != null)
+                            Text(
+                              'by ${order.customerName}',
+                              style: text.bodySmall?.copyWith(
+                                color: AppColors.violet,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           Text(
                             '${DateFormat('dd/MM/yyyy HH:mm').format(order.createdAt)} · ${order.itemCount} item(s)',
                             style: text.bodySmall?.copyWith(
@@ -164,12 +201,14 @@ class _RevenueScreenState extends State<RevenueScreen> {
 
 class _TotalCard extends StatelessWidget {
   const _TotalCard({
+    required this.title,
     required this.label,
     required this.total,
     required this.orderCount,
     required this.average,
   });
 
+  final String title;
   final String label;
   final double total;
   final int orderCount;
@@ -232,7 +271,7 @@ class _TotalCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Total revenue · $label',
+                '$title · $label',
                 style: text.bodyMedium?.copyWith(color: Colors.white),
               ),
             ],
@@ -258,6 +297,77 @@ class _TotalCard extends StatelessWidget {
               stat('Avg. order', formatPrice(average)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShopBreakdown extends StatelessWidget {
+  const _ShopBreakdown({required this.shops});
+
+  final List<ShopRevenue> shops;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final best = shops.first.total;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          for (final shop in shops)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.storefront_rounded,
+                        size: 18,
+                        color: AppColors.violet,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          shop.shop,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        formatPrice(shop.total),
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: best == 0 ? 0 : shop.total / best,
+                      minHeight: 8,
+                      backgroundColor: AppColors.canvas,
+                      color: AppColors.violet,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${shop.orders} order(s)',
+                    style: text.bodySmall?.copyWith(color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

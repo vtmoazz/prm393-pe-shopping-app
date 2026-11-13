@@ -14,7 +14,31 @@ All data is stored on the device with SQLite (`sqflite`). Remember Me is stored 
 | Search & sort | Real-time search by name; sort by price ascending / descending |
 | Cart | Add from the list or the detail screen, change quantity, remove, checkout |
 | Revenue | Every checkout records an order; total revenue filtered by All / Day / Month / Year |
+| Marketplace roles | Admin, Seller and Customer accounts; each role sees different screens (see below) |
 | UI | Material 3, `go_router` navigation with auth redirect, `SnackBar`, `AlertDialog`, `Dialog`, one screen per feature |
+
+## Roles (marketplace)
+
+Several shops sell on one app. Each account has one role:
+
+| Role | Sees and can do |
+|---|---|
+| Customer | Every product with its shop name, cart, SePay checkout, own order history |
+| Seller | Only the products of their own shop; add / edit / delete them; their shop's sales with who bought |
+| Admin | Every product (can edit or delete any), revenue of the whole platform with a per-shop breakdown, the account list where they change roles |
+
+Registration lets a user pick "I want to buy" (customer) or "I want to sell" (seller, shop name required). Admin accounts cannot be registered.
+
+Demo accounts created on first launch (test data only):
+
+| Role | Email | Password | Shop |
+|---|---|---|---|
+| Admin | `admin@shop.com` | `admin123` | – |
+| Seller | `official@shop.com` | `seller123` | Sunset Official (5 products) |
+| Seller | `tech@shop.com` | `seller123` | Tech Corner (2 products) |
+| Customer | register a new account | | |
+
+An older database (schema version 1) is upgraded in place: existing users become customers, existing products and past sales belong to Sunset Official.
 
 ## Project structure
 
@@ -25,7 +49,7 @@ lib/
   data/app_database.dart    # SQLite schema, queries, seed products
   models/models.dart        # AppUser, Product, CartItem, OrderRecord
   providers/                # AuthProvider, ProductProvider, CartProvider (ChangeNotifier)
-  screens/                  # login, register, product list/detail/form, cart, revenue
+  screens/                  # login, register, product list/detail/form, cart, revenue, admin accounts
   utils/                    # validators, price format and revenue filters
   widgets/                  # product image, cart badge + add-to-cart feedback
 test/app_logic_test.dart    # unit tests on an in-memory database

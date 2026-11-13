@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
@@ -20,11 +21,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
+  final _shopName = TextEditingController();
+  UserRole _role = UserRole.customer;
   bool _busy = false;
 
   @override
   void dispose() {
-    for (final c in [_fullName, _email, _password, _confirm]) {
+    for (final c in [_fullName, _email, _password, _confirm, _shopName]) {
       c.dispose();
     }
     super.dispose();
@@ -37,6 +40,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _fullName.text,
       _email.text,
       _password.text,
+      role: _role,
+      shopName: _shopName.text,
     );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -109,6 +114,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        SegmentedButton<UserRole>(
+                          segments: const [
+                            ButtonSegment(
+                              value: UserRole.customer,
+                              icon: Icon(Icons.shopping_bag_outlined),
+                              label: Text('I want to buy'),
+                            ),
+                            ButtonSegment(
+                              value: UserRole.seller,
+                              icon: Icon(Icons.storefront_rounded),
+                              label: Text('I want to sell'),
+                            ),
+                          ],
+                          selected: {_role},
+                          onSelectionChanged: (s) =>
+                              setState(() => _role = s.first),
+                        ),
+                        const SizedBox(height: 14),
+                        if (_role == UserRole.seller) ...[
+                          TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: _shopName,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Shop Name',
+                              prefixIcon: Icon(Icons.storefront_rounded),
+                            ),
+                            validator: (v) => validateRequired(v, 'Shop Name'),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         TextFormField(
                           autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _fullName,

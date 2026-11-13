@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
@@ -75,6 +76,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
     final text = Theme.of(context).textTheme;
     final topInset = MediaQuery.paddingOf(context).top;
+    final user = context.watch<AuthProvider>().user;
+    final canManage = user?.canManage(product) ?? false;
+    final isCustomer = user?.isCustomer ?? false;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -123,6 +127,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
+                        if (product.shopName != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.storefront_rounded,
+                                size: 18,
+                                color: AppColors.violet,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Sold by ${product.shopName}',
+                                style: text.titleSmall?.copyWith(
+                                  color: AppColors.violet,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -194,74 +218,78 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     onPressed: () => context.pop(),
                   ),
                   const Spacer(),
-                  GlassIconButton(
-                    dark: true,
-                    tooltip: 'Edit',
-                    icon: const Icon(Icons.edit_rounded),
-                    onPressed: () =>
-                        context.push('/products/${product.id}/edit'),
-                  ),
-                  const SizedBox(width: 8),
-                  GlassIconButton(
-                    dark: true,
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    onPressed: _confirmDelete,
-                  ),
-                  const SizedBox(width: 8),
-                  const Material(
-                    color: Color(0x47000000),
-                    shape: CircleBorder(),
-                    child: IconTheme(
-                      data: IconThemeData(color: Colors.white),
-                      child: CartIconButton(),
+                  if (canManage) ...[
+                    GlassIconButton(
+                      dark: true,
+                      tooltip: 'Edit',
+                      icon: const Icon(Icons.edit_rounded),
+                      onPressed: () =>
+                          context.push('/products/${product.id}/edit'),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    GlassIconButton(
+                      dark: true,
+                      tooltip: 'Delete',
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: _confirmDelete,
+                    ),
+                  ],
+                  if (isCustomer)
+                    const Material(
+                      color: Color(0x47000000),
+                      shape: CircleBorder(),
+                      child: IconTheme(
+                        data: IconThemeData(color: Colors.white),
+                        child: CartIconButton(),
+                      ),
+                    ),
                 ],
               ),
             ),
           ],
         ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.ink.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, -6),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-              child: Row(
-                children: [
-                  _QuantityPill(
-                    quantity: _quantity,
-                    onMinus: _quantity > 1
-                        ? () => setState(() => _quantity--)
-                        : null,
-                    onPlus: () => setState(() => _quantity++),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: GradientButton(
-                      label: 'Add to cart',
-                      icon: Icons.add_shopping_cart_rounded,
-                      onPressed: () => addToCartWithFeedback(
-                        context,
-                        product,
-                        quantity: _quantity,
-                      ),
+        bottomNavigationBar: !isCustomer
+            ? null
+            : Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.ink.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, -6),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+                    child: Row(
+                      children: [
+                        _QuantityPill(
+                          quantity: _quantity,
+                          onMinus: _quantity > 1
+                              ? () => setState(() => _quantity--)
+                              : null,
+                          onPlus: () => setState(() => _quantity++),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: GradientButton(
+                            label: 'Add to cart',
+                            icon: Icons.add_shopping_cart_rounded,
+                            onPressed: () => addToCartWithFeedback(
+                              context,
+                              product,
+                              quantity: _quantity,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

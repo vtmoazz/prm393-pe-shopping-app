@@ -61,20 +61,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: AppColors.ink,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          onPressed: () => context.push('/products/new'),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add product'),
-        ),
+        floatingActionButton: user?.isSeller == true
+            ? FloatingActionButton.extended(
+                backgroundColor: AppColors.ink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                onPressed: () => context.push('/products/new'),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add product'),
+              )
+            : null,
         body: Column(
           children: [
             _Header(
-              name: user?.fullName ?? '',
+              user: user,
               productCount: products.length,
               onLogout: _confirmLogout,
               search: TextField(
@@ -147,7 +149,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         itemCount: products.length,
                         itemBuilder: (context, index) => EntranceAnimation(
                           index: index,
-                          child: _ProductCard(product: products[index]),
+                          child: _ProductCard(
+                            product: products[index],
+                            viewer: user,
+                          ),
                         ),
                       ),
                     ),
@@ -161,13 +166,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
 class _Header extends StatelessWidget {
   const _Header({
-    required this.name,
+    required this.user,
     required this.productCount,
     required this.onLogout,
     required this.search,
   });
 
-  final String name;
+  final AppUser? user;
   final int productCount;
   final VoidCallback onLogout;
   final Widget search;
@@ -175,7 +180,20 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final name = user?.fullName ?? '';
     final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+    final role = user?.role ?? UserRole.customer;
+    final count = '$productCount ${productCount == 1 ? 'product' : 'products'}';
+    final subtitle = switch (role) {
+      UserRole.customer => '$count waiting for you',
+      UserRole.seller => '${user?.shopName ?? 'Your shop'} · $count',
+      UserRole.admin => 'Admin · $count on the marketplace',
+    };
+    final headline = switch (role) {
+      UserRole.customer => 'Find something\nyou will love',
+      UserRole.seller => 'Manage your\nshop',
+      UserRole.admin => 'Run the\nmarketplace',
+    };
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.sunset,
@@ -216,7 +234,9 @@ class _Header extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '$productCount ${productCount == 1 ? 'product' : 'products'} waiting for you',
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: text.bodySmall?.copyWith(
                             color: Colors.white70,
                           ),
@@ -224,20 +244,34 @@ class _Header extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (role == UserRole.admin) ...[
+                    GlassIconButton(
+                      tooltip: 'Users',
+                      onPressed: () => context.push('/admin/users'),
+                      icon: const Icon(Icons.manage_accounts_rounded),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   GlassIconButton(
-                    tooltip: 'Revenue',
+                    tooltip: switch (role) {
+                      UserRole.customer => 'My orders',
+                      UserRole.seller => 'Shop sales',
+                      UserRole.admin => 'Platform revenue',
+                    },
                     onPressed: () => context.push('/revenue'),
                     icon: const Icon(Icons.insights_rounded),
                   ),
-                  const SizedBox(width: 6),
-                  const Material(
-                    color: Color(0x2EFFFFFF),
-                    shape: CircleBorder(),
-                    child: IconTheme(
-                      data: IconThemeData(color: Colors.white),
-                      child: CartIconButton(),
+                  if (role == UserRole.customer) ...[
+                    const SizedBox(width: 6),
+                    const Material(
+                      color: Color(0x2EFFFFFF),
+                      shape: CircleBorder(),
+                      child: IconTheme(
+                        data: IconThemeData(color: Colors.white),
+                        child: CartIconButton(),
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(width: 6),
                   GlassIconButton(
                     tooltip: 'Log out',
@@ -248,7 +282,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                'Find something\nyou will love',
+                headline,
                 style: text.headlineSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -266,9 +300,10 @@ class _Header extends StatelessWidget {
 }
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
+  const _ProductCard({required this.product, required this.viewer});
 
   final Product product;
+  final AppUser? viewer;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +343,31 @@ class _ProductCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                      if (viewer?.isSeller != true &&
+                          product.shopName != null) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.storefront_rounded,
+                              size: 14,
+                              color: AppColors.violet,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                product.shopName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.labelMedium?.copyWith(
+                                  color: AppColors.violet,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         product.description,
@@ -329,10 +389,16 @@ class _ProductCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          _AddButton(
-                            onTap: () =>
-                                addToCartWithFeedback(context, product),
-                          ),
+                          if (viewer?.isCustomer == true)
+                            _AddButton(
+                              onTap: () =>
+                                  addToCartWithFeedback(context, product),
+                            )
+                          else if (viewer?.canManage(product) == true)
+                            const Icon(
+                              Icons.edit_note_rounded,
+                              color: AppColors.muted,
+                            ),
                         ],
                       ),
                     ],

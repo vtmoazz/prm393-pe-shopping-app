@@ -11,6 +11,7 @@ class ProductProvider extends ChangeNotifier {
   final AppDatabase _db;
 
   List<Product> _products = [];
+  AppUser? _viewer;
   String _query = '';
   PriceSort _sort = PriceSort.none;
   bool _loading = false;
@@ -19,12 +20,21 @@ class ProductProvider extends ChangeNotifier {
   String get query => _query;
   PriceSort get sort => _sort;
 
-  /// Products after applying the search query and price sort.
+  /// Sets who is looking: a seller only sees the products of their shop.
+  void setViewer(AppUser? user) {
+    if (_viewer?.id == user?.id && _viewer?.role == user?.role) return;
+    _viewer = user;
+    notifyListeners();
+  }
+
+  /// Products after applying the role scope, search query and price sort.
   List<Product> get visibleProducts {
+    final viewer = _viewer;
     final q = _query.trim().toLowerCase();
-    final result = q.isEmpty
-        ? List.of(_products)
-        : _products.where((p) => p.name.toLowerCase().contains(q)).toList();
+    final result = _products
+        .where((p) => viewer?.isSeller != true || p.sellerId == viewer!.id)
+        .where((p) => q.isEmpty || p.name.toLowerCase().contains(q))
+        .toList();
     switch (_sort) {
       case PriceSort.ascending:
         result.sort((a, b) => a.price.compareTo(b.price));
