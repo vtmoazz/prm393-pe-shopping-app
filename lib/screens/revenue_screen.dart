@@ -46,6 +46,10 @@ class _RevenueScreenState extends State<RevenueScreen> {
         ? revenueByShop(filterOrders(cart.shopSales, _period, _date))
         : const <ShopRevenue>[];
     final total = totalRevenue(orders);
+    // Customers pay the listed price; the shop pays the affiliate's share.
+    final commission = role == UserRole.customer
+        ? null
+        : orders.fold<double>(0, (sum, o) => sum + o.commission);
     final buckets = revenueBuckets(allOrders, _period, _date);
     final text = Theme.of(context).textTheme;
 
@@ -66,6 +70,7 @@ class _RevenueScreenState extends State<RevenueScreen> {
             total: total,
             orderCount: orders.length,
             average: orders.isEmpty ? 0 : total / orders.length,
+            commission: commission,
           ),
           const SizedBox(height: 18),
           SingleChildScrollView(
@@ -116,6 +121,52 @@ class _RevenueScreenState extends State<RevenueScreen> {
               )
             else
               _ShopBreakdown(shops: shops),
+            const SizedBox(height: 22),
+            Text(
+              'Top affiliates (all time)',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            if (cart.affiliates.isEmpty)
+              const Text(
+                'No referred orders yet',
+                style: TextStyle(color: AppColors.muted),
+              )
+            else
+              for (final a in cart.affiliates)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.card_giftcard_rounded,
+                        size: 18,
+                        color: AppColors.magenta,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${a.name} · ${a.code}\n${a.orders} order(s)',
+                          style: text.bodySmall,
+                        ),
+                      ),
+                      Text(
+                        formatPrice(a.commission),
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
           ],
           const SizedBox(height: 22),
           Text(
@@ -181,6 +232,14 @@ class _RevenueScreenState extends State<RevenueScreen> {
                               color: AppColors.muted,
                             ),
                           ),
+                          if (order.commission > 0)
+                            Text(
+                              'Affiliate fee ${formatPrice(order.commission)}',
+                              style: text.bodySmall?.copyWith(
+                                color: AppColors.magenta,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -206,6 +265,7 @@ class _TotalCard extends StatelessWidget {
     required this.total,
     required this.orderCount,
     required this.average,
+    this.commission,
   });
 
   final String title;
@@ -213,6 +273,9 @@ class _TotalCard extends StatelessWidget {
   final double total;
   final int orderCount;
   final double average;
+
+  /// Affiliate commission in the period; null hides it (customer view).
+  final double? commission;
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +358,10 @@ class _TotalCard extends StatelessWidget {
               stat('Orders', '$orderCount'),
               const SizedBox(width: 10),
               stat('Avg. order', formatPrice(average)),
+              if (commission case final paid?) ...[
+                const SizedBox(width: 10),
+                stat('Affiliate fees', formatPrice(paid)),
+              ],
             ],
           ),
         ],

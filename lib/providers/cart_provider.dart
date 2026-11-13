@@ -14,6 +14,8 @@ class CartProvider extends ChangeNotifier {
   List<CartItem> _items = [];
   List<OrderRecord> _orders = [];
   List<OrderRecord> _shopSales = [];
+  List<OrderRecord> _referredOrders = [];
+  List<AffiliateSummary> _affiliates = [];
 
   List<CartItem> get items => _items;
 
@@ -23,6 +25,12 @@ class CartProvider extends ChangeNotifier {
 
   /// Admin only: each shop's part of each order, for the per-shop breakdown.
   List<OrderRecord> get shopSales => _shopSales;
+
+  /// Customer only: orders other customers placed with this user's code.
+  List<OrderRecord> get referredOrders => _referredOrders;
+
+  /// Admin only: every affiliate's results.
+  List<AffiliateSummary> get affiliates => _affiliates;
   int get itemCount => _items.fold(0, (sum, i) => sum + i.quantity);
   double get total => _items.fold(0, (sum, i) => sum + i.subtotal);
 
@@ -42,7 +50,12 @@ class CartProvider extends ChangeNotifier {
       UserRole.seller => await _db.getShopSales(sellerId: user!.id),
       UserRole.admin => await _db.getAllOrders(),
     };
-    _shopSales = user?.isAdmin == true ? await _db.getShopSales() : [];
+    final isAdmin = user?.isAdmin == true;
+    _shopSales = isAdmin ? await _db.getShopSales() : [];
+    _affiliates = isAdmin ? await _db.getAffiliateSummaries() : [];
+    _referredOrders = user != null && user.isCustomer
+        ? await _db.getReferredOrders(user.id!)
+        : [];
     notifyListeners();
   }
 
@@ -62,10 +75,28 @@ class CartProvider extends ChangeNotifier {
   }
 
   /// Returns the new order id, or null when the cart was empty.
-  Future<int?> checkout() async {
-    final orderId = await _db.checkout(_requireUser());
+  /// Throws an [ArgumentError] when [affiliateCode] is not valid.
+  Future<int?> checkout({String? affiliateCode}) async {
+    final orderId = await _db.checkout(
+      _requireUser(),
+      affiliateCode: affiliateCode,
+    );
     await refresh();
     return orderId;
+  }
+
+  /// Checks [code] before payment, so a typo never costs a paid order.
+  /// Returns an error message, or null when the code can be used.
+  Future<String?> validateAffiliateCode(String code) async {
+    if (code.trim().isEmpty) return null;
+    final affiliate = await _db.findUserByRefCode(code);
+    if (affiliate == null || !affiliate.isCustomer) {
+      return 'Affiliate code ${code.trim().toUpperCase()} does not exist';
+    }
+    if (affiliate.id == _requireUser()) {
+      return 'You cannot use your own affiliate code';
+    }
+    return null;
   }
 
   /// Only customers shop; sellers and admins have no cart.

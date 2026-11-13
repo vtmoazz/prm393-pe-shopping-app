@@ -27,6 +27,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _description = TextEditingController();
   final _price = TextEditingController();
   final _imageUrl = TextEditingController();
+  final _commission = TextEditingController(
+    text: formatRate(Product.defaultCommissionRate),
+  );
   Product? _editing;
   bool _busy = false;
 
@@ -43,6 +46,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         _description.text = p.description;
         _price.text = p.price.toStringAsFixed(0);
         _imageUrl.text = p.image ?? '';
+        _commission.text = formatRate(p.commissionRate);
       }
     }
     _imageUrl.addListener(() => setState(() {}));
@@ -50,7 +54,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _description, _price, _imageUrl]) {
+    for (final c in [_name, _description, _price, _imageUrl, _commission]) {
       c.dispose();
     }
     super.dispose();
@@ -74,6 +78,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       description: _description.text.trim(),
       price: double.parse(_price.text.trim()),
       image: image.isEmpty ? null : image,
+      commissionRate: double.parse(_commission.text.trim()),
       // Edits keep the owning shop; new products belong to the seller.
       sellerId: _editing?.sellerId ?? context.read<AuthProvider>().user?.id,
     );
@@ -176,6 +181,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     prefixIcon: Icon(Icons.payments_outlined),
                   ),
                   validator: validatePrice,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  controller: _commission,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Affiliate commission (%)',
+                    helperText: 'Paid to whoever referred the buyer',
+                    prefixIcon: Icon(Icons.percent_rounded),
+                  ),
+                  validator: validateCommission,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

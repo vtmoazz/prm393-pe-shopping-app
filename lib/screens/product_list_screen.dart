@@ -252,6 +252,14 @@ class _Header extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                   ],
+                  if (role == UserRole.customer) ...[
+                    GlassIconButton(
+                      tooltip: 'Affiliate',
+                      onPressed: () => context.push('/affiliate'),
+                      icon: const Icon(Icons.card_giftcard_rounded),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   GlassIconButton(
                     tooltip: switch (role) {
                       UserRole.customer => 'My orders',

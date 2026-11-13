@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
 import 'screens/admin_users_screen.dart';
+import 'screens/affiliate_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/product_detail_screen.dart';
@@ -28,7 +29,7 @@ GoRouter buildRouter(AuthProvider auth, ProductProvider products) {
       final location = state.matchedLocation;
       final allowed = switch (location) {
         '/products/new' => user.isSeller,
-        '/cart' => user.isCustomer,
+        '/cart' || '/affiliate' => user.isCustomer,
         '/admin/users' => user.isAdmin,
         _ => true,
       };
@@ -65,6 +66,7 @@ GoRouter buildRouter(AuthProvider auth, ProductProvider products) {
         ],
       ),
       GoRoute(path: '/cart', builder: (_, _) => const CartScreen()),
+      GoRoute(path: '/affiliate', builder: (_, _) => const AffiliateScreen()),
       GoRoute(path: '/revenue', builder: (_, _) => const RevenueScreen()),
       GoRoute(
         path: '/admin/users',

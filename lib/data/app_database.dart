@@ -12,7 +12,8 @@ class AppDatabase {
   final Database _db;
 
   /// 1: single shop. 2: roles, seller-owned products, per-shop order lines.
-  static const _version = 2;
+  /// 3: affiliate codes and commissions.
+  static const _version = 3;
 
   static const officialShopEmail = 'official@shop.com';
 
@@ -44,7 +45,8 @@ class AppDatabase {
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'customer',
-        shop_name TEXT
+        shop_name TEXT,
+        ref_code TEXT UNIQUE
       )''');
     await db.execute('''
       CREATE TABLE products(
@@ -53,7 +55,8 @@ class AppDatabase {
         description TEXT NOT NULL,
         price REAL NOT NULL,
         image TEXT,
-        seller_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+        seller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        commission_rate REAL NOT NULL DEFAULT 5
       )''');
     await db.execute('''
       CREATE TABLE cart_items(
@@ -67,7 +70,8 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         total REAL NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        affiliate_id INTEGER REFERENCES users(id) ON DELETE SET NULL
       )''');
     // seller_id has no foreign key so sales history outlives a deleted shop.
     await db.execute('''
@@ -77,7 +81,8 @@ class AppDatabase {
         product_name TEXT NOT NULL,
         unit_price REAL NOT NULL,
         quantity INTEGER NOT NULL,
-        seller_id INTEGER
+        seller_id INTEGER,
+        commission REAL NOT NULL DEFAULT 0
       )''');
 
     final sellers = await _seedAccounts(db);
@@ -93,6 +98,7 @@ class AppDatabase {
         product.copyWith(sellerId: sellers.tech).toMap(),
       );
     }
+    await _backfillRefCodes(db);
   }
 
   /// Turns a single-shop database into the marketplace without losing data:
@@ -117,12 +123,65 @@ class AppDatabase {
         'seller_id': sellers.official,
       }, where: 'seller_id IS NULL');
       for (final product in _techProducts) {
+        // commission_rate arrives in version 3, below.
         await db.insert(
           'products',
-          product.copyWith(sellerId: sellers.tech).toMap(),
+          product.copyWith(sellerId: sellers.tech).toMap()
+            ..remove('commission_rate'),
         );
       }
     }
+    if (from < 3) {
+      await db.execute('ALTER TABLE users ADD COLUMN ref_code TEXT');
+      await db.execute('CREATE UNIQUE INDEX users_ref_code ON users(ref_code)');
+      await db.execute(
+        'ALTER TABLE products ADD COLUMN commission_rate REAL NOT NULL DEFAULT 5',
+      );
+      await db.execute(
+        'ALTER TABLE orders ADD COLUMN affiliate_id INTEGER '
+        'REFERENCES users(id) ON DELETE SET NULL',
+      );
+      await db.execute(
+        'ALTER TABLE order_items ADD COLUMN commission REAL NOT NULL DEFAULT 0',
+      );
+      await _backfillRefCodes(db);
+    }
+  }
+
+  static Future<void> _backfillRefCodes(Database db) async {
+    final users = await db.query(
+      'users',
+      columns: ['id', 'email'],
+      where: 'ref_code IS NULL',
+    );
+    for (final u in users) {
+      await _assignRefCode(db, u['id'] as int, u['email'] as String);
+    }
+  }
+
+  /// Gives a user their affiliate code: the letters of the email name plus
+  /// the id, so codes are unique and still readable (lan@mail.com -> LAN5).
+  static Future<void> _assignRefCode(
+    DatabaseExecutor db,
+    int id,
+    String email,
+  ) => db.update(
+    'users',
+    {'ref_code': refCodeFor(id, email)},
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+
+  static String refCodeFor(int id, String email) {
+    final letters = email
+        .split('@')
+        .first
+        .toUpperCase()
+        .replaceAll(RegExp('[^A-Z]'), '');
+    final prefix = letters.isEmpty
+        ? 'USER'
+        : letters.substring(0, letters.length.clamp(0, 6));
+    return '$prefix$id';
   }
 
   /// Demo accounts for each role. Emails that already exist are kept as they
@@ -235,7 +294,21 @@ class AppDatabase {
     return rows.isEmpty ? null : AppUser.fromMap(rows.first);
   }
 
-  Future<int> insertUser(AppUser user) => _db.insert('users', user.toMap());
+  Future<int> insertUser(AppUser user) async {
+    final id = await _db.insert('users', user.toMap());
+    await _assignRefCode(_db, id, user.email);
+    return id;
+  }
+
+  Future<AppUser?> findUserByRefCode(String code) async {
+    final rows = await _db.query(
+      'users',
+      where: 'ref_code = ?',
+      whereArgs: [code.trim().toUpperCase()],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : AppUser.fromMap(rows.first);
+  }
 
   Future<List<AppUser>> getUsers() async {
     final rows = await _db.query('users', orderBy: 'role, full_name');
@@ -325,12 +398,33 @@ class AppDatabase {
 
   /// Turns the user's cart into an order and empties the cart. Each line keeps
   /// the selling shop so revenue can be split per shop.
+  ///
+  /// With an [affiliateCode], each line also records the commission owed to
+  /// that affiliate at the product's current rate. The code must belong to
+  /// another customer, otherwise this throws an [ArgumentError].
   /// Returns the new order id, or null when the cart is empty.
-  Future<int?> checkout(int userId, {DateTime? at}) {
+  Future<int?> checkout(
+    int userId, {
+    DateTime? at,
+    String? affiliateCode,
+  }) async {
+    int? affiliateId;
+    final code = affiliateCode?.trim() ?? '';
+    if (code.isNotEmpty) {
+      final affiliate = await findUserByRefCode(code);
+      if (affiliate == null || !affiliate.isCustomer) {
+        throw ArgumentError('Affiliate code $code does not exist');
+      }
+      if (affiliate.id == userId) {
+        throw ArgumentError('You cannot use your own affiliate code');
+      }
+      affiliateId = affiliate.id;
+    }
     return _db.transaction((txn) async {
       final rows = await txn.rawQuery(
         '''
-        SELECT p.name, p.price, p.seller_id, c.quantity FROM cart_items c
+        SELECT p.name, p.price, p.seller_id, p.commission_rate, c.quantity
+        FROM cart_items c
         JOIN products p ON p.id = c.product_id
         WHERE c.user_id = ?''',
         [userId],
@@ -346,14 +440,18 @@ class AppDatabase {
         'user_id': userId,
         'total': total,
         'created_at': (at ?? DateTime.now()).toIso8601String(),
+        'affiliate_id': affiliateId,
       });
       for (final r in rows) {
+        final amount = (r['price'] as num).toDouble() * (r['quantity'] as int);
+        final rate = (r['commission_rate'] as num).toDouble();
         await txn.insert('order_items', {
           'order_id': orderId,
           'product_name': r['name'],
           'unit_price': r['price'],
           'quantity': r['quantity'],
           'seller_id': r['seller_id'],
+          'commission': affiliateId == null ? 0 : amount * rate / 100,
         });
       }
       await txn.delete('cart_items', where: 'user_id = ?', whereArgs: [userId]);
@@ -381,7 +479,8 @@ class AppDatabase {
   Future<List<OrderRecord>> getAllOrders() async {
     final rows = await _db.rawQuery('''
       SELECT o.id, o.total, o.created_at, u.full_name AS customer_name,
-        COALESCE(SUM(i.quantity), 0) AS item_count
+        COALESCE(SUM(i.quantity), 0) AS item_count,
+        COALESCE(SUM(i.commission), 0) AS commission
       FROM orders o
       JOIN users u ON u.id = o.user_id
       LEFT JOIN order_items i ON i.order_id = o.id
@@ -398,7 +497,7 @@ class AppDatabase {
       SELECT o.id, o.created_at, c.full_name AS customer_name,
         COALESCE(s.shop_name, 'Closed shop') AS shop_name,
         SUM(i.unit_price * i.quantity) AS total,
-        SUM(i.quantity) AS item_count
+        SUM(i.quantity) AS item_count, SUM(i.commission) AS commission
       FROM order_items i
       JOIN orders o ON o.id = i.order_id
       JOIN users c ON c.id = o.user_id
@@ -409,5 +508,45 @@ class AppDatabase {
       [?sellerId],
     );
     return rows.map(OrderRecord.fromMap).toList();
+  }
+
+  // ---------- Affiliate ----------
+
+  /// Orders placed with [affiliateId]'s code, with the commission each earned.
+  Future<List<OrderRecord>> getReferredOrders(int affiliateId) async {
+    final rows = await _db.rawQuery(
+      '''
+      SELECT o.id, o.total, o.created_at, u.full_name AS customer_name,
+        SUM(i.quantity) AS item_count, SUM(i.commission) AS commission
+      FROM orders o
+      JOIN users u ON u.id = o.user_id
+      JOIN order_items i ON i.order_id = o.id
+      WHERE o.affiliate_id = ?
+      GROUP BY o.id
+      ORDER BY o.created_at DESC''',
+      [affiliateId],
+    );
+    return rows.map(OrderRecord.fromMap).toList();
+  }
+
+  /// Every affiliate who brought in an order, highest commission first.
+  Future<List<AffiliateSummary>> getAffiliateSummaries() async {
+    final rows = await _db.rawQuery('''
+      SELECT a.full_name, a.ref_code, COUNT(DISTINCT o.id) AS orders,
+        SUM(i.commission) AS commission
+      FROM orders o
+      JOIN users a ON a.id = o.affiliate_id
+      JOIN order_items i ON i.order_id = o.id
+      GROUP BY a.id
+      ORDER BY commission DESC''');
+    return [
+      for (final r in rows)
+        (
+          name: r['full_name'] as String,
+          code: r['ref_code'] as String? ?? '',
+          orders: r['orders'] as int,
+          commission: (r['commission'] as num).toDouble(),
+        ),
+    ];
   }
 }

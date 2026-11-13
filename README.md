@@ -40,6 +40,16 @@ Demo accounts created on first launch (test data only):
 
 An older database (schema version 1) is upgraded in place: existing users become customers, existing products and past sales belong to Sunset Official.
 
+## Affiliate
+
+Every customer gets a referral code (for example `LAN2`), shown on the Affiliate screen with a copy button.
+
+- At checkout a buyer may enter someone else's code. Unknown codes, codes of sellers or admins, and the buyer's own code are rejected.
+- The buyer pays the normal price. The affiliate earns each product's commission rate (set by its shop on the product form, 0–50%, 5% by default). The commission is taken out of the shop's share.
+- Customers see their earnings and referred orders on the Affiliate screen. Sellers see "Affiliate fees" on their sales. Admins see the fees across the platform plus a "Top affiliates" list.
+
+Databases from schema version 2 are upgraded in place: existing users get a code, existing products get 5%.
+
 ## Project structure
 
 ```

@@ -291,6 +291,7 @@ void main() {
       final upgraded = await AppDatabase.open(path: path, factory: databaseFactoryFfiNoIsolate);
       final old = await upgraded.findUserByEmail('old@test.com');
       expect(old!.role, UserRole.customer);
+      expect(old.refCode, 'OLD1', reason: 'existing users get a code in v3');
       expect(await upgraded.findUserByEmail('admin@shop.com'), isNotNull);
       final products = await upgraded.getProducts();
       expect(products.firstWhere((p) => p.name == 'Old product').shopName, 'Sunset Official');
@@ -299,6 +300,71 @@ void main() {
       expect(sales.single.total, 20);
       await upgraded.close();
       await dir.delete(recursive: true);
+    });
+  });
+
+  group('affiliate', () {
+    Future<(AuthProvider, CartProvider)> customer(String name, String email) async {
+      final auth = AuthProvider(db, await SharedPreferences.getInstance());
+      await auth.register(name, email, 'secret1');
+      await auth.login(email, 'secret1', rememberMe: false);
+      final cart = CartProvider(db);
+      await cart.attachUser(auth.user);
+      return (auth, cart);
+    }
+
+    test('every account gets a readable unique code', () async {
+      final (auth, _) = await customer('Lan', 'lan.2@mail.com');
+      expect(auth.user!.refCode, 'LAN${auth.user!.id}');
+      expect(AppDatabase.refCodeFor(7, '123@x.com'), 'USER7');
+      expect(AppDatabase.refCodeFor(3, 'christopher@x.com'), 'CHRIST3');
+      expect((await db.findUserByEmail('admin@shop.com'))!.refCode, isNotNull);
+    });
+
+    test('a referred order pays commission to the affiliate', () async {
+      final (affiliate, affiliateCart) = await customer('Lan', 'lan@test.com');
+      final (_, buyerCart) = await customer('Minh', 'minh@test.com');
+      final products = ProductProvider(db);
+      await products.load();
+      final tech = products.visibleProducts.firstWhere((p) => p.shopName == 'Tech Corner');
+      await products.update(tech.copyWith(commissionRate: 10));
+
+      await buyerCart.add(tech, quantity: 2);
+      final code = affiliate.user!.refCode!.toLowerCase();
+      expect(await buyerCart.validateAffiliateCode(code), isNull, reason: 'codes ignore case');
+      await buyerCart.checkout(affiliateCode: code);
+      expect(buyerCart.orders.single.total, tech.price * 2, reason: 'the buyer pays the listed price');
+
+      await affiliateCart.refresh();
+      final referred = affiliateCart.referredOrders.single;
+      expect(referred.customerName, 'Minh');
+      expect(referred.commission, tech.price * 2 * 0.1);
+
+      final techSales = await db.getShopSales(sellerId: tech.sellerId);
+      expect(techSales.single.commission, tech.price * 2 * 0.1);
+      final leaders = await db.getAffiliateSummaries();
+      expect(leaders.single.code, affiliate.user!.refCode);
+      expect(leaders.single.orders, 1);
+    });
+
+    test('bad or own codes are refused and the cart is kept', () async {
+      final (buyer, cart) = await customer('Minh', 'minh@test.com');
+      final products = ProductProvider(db);
+      await products.load();
+      await cart.add(products.visibleProducts.first);
+
+      expect(await cart.validateAffiliateCode('NOPE99'), contains('does not exist'));
+      expect(await cart.validateAffiliateCode(buyer.user!.refCode!), contains('own'));
+      final seller = await db.findUserByEmail('tech@shop.com');
+      expect(await cart.validateAffiliateCode(seller!.refCode!), contains('does not exist'),
+          reason: 'only customers are affiliates');
+      expect(() => cart.checkout(affiliateCode: 'NOPE99'), throwsArgumentError);
+      expect(cart.items, hasLength(1));
+
+      await cart.checkout();
+      expect(cart.orders.single.commission, 0, reason: 'no code, no commission');
+      expect(validateCommission('60'), isNotNull);
+      expect(validateCommission('7.5'), isNull);
     });
   });
 }

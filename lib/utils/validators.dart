@@ -35,3 +35,17 @@ String? validatePrice(String? value) {
 
 String hashPassword(String password) =>
     sha256.convert(utf8.encode(password)).toString();
+
+/// Affiliate commission in percent of the sale, from 0 to 50.
+String? validateCommission(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return 'Commission is required';
+  }
+  final rate = double.tryParse(value.trim());
+  if (rate == null) return 'Commission must be a number';
+  return rate < 0 || rate > 50 ? 'Commission must be from 0 to 50%' : null;
+}
+
+/// A percent without a needless ".0": 5 -> "5", 2.5 -> "2.5".
+String formatRate(double rate) =>
+    rate == rate.roundToDouble() ? rate.toStringAsFixed(0) : '$rate';

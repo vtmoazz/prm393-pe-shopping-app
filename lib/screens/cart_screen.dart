@@ -45,28 +45,16 @@ class CartScreen extends StatelessWidget {
   Future<void> _checkout(BuildContext context) async {
     final cart = context.read<CartProvider>();
     final total = cart.total;
-    final ok = await showDialog<bool>(
+    // Null means cancelled; an empty string means no affiliate code.
+    final affiliateCode = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.payments_outlined, size: 36),
-        title: const Text('Checkout'),
-        content: Text(
-          'Pay ${formatPrice(total)} for ${cart.itemCount} item(s)?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
+      builder: (_) => _CheckoutDialog(
+        total: total,
+        itemCount: cart.itemCount,
+        validate: cart.validateAffiliateCode,
       ),
     );
-    if (ok != true || !context.mounted) return;
+    if (affiliateCode == null || !context.mounted) return;
 
     // With SePay configured the order is placed only after the bank transfer
     // arrives; without it, checkout stays a local confirmation.
@@ -83,7 +71,16 @@ class CartScreen extends StatelessWidget {
       if (paid != true || !context.mounted) return;
     }
 
-    final orderId = await cart.checkout();
+    final int? orderId;
+    try {
+      orderId = await cart.checkout(affiliateCode: affiliateCode);
+    } on ArgumentError catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('${e.message}')));
+      }
+      return;
+    }
     if (!context.mounted || orderId == null) return;
     await showDialog<void>(
       context: context,
@@ -411,6 +408,91 @@ class _Stepper extends StatelessWidget {
           button(Icons.add_rounded, 'Increase', onPlus, filled: true),
         ],
       ),
+    );
+  }
+}
+
+/// Confirms the payment and takes an optional affiliate code, checked before
+/// the dialog closes. Pops the trimmed code ('' when none), or null on cancel.
+class _CheckoutDialog extends StatefulWidget {
+  const _CheckoutDialog({
+    required this.total,
+    required this.itemCount,
+    required this.validate,
+  });
+
+  final double total;
+  final int itemCount;
+  final Future<String?> Function(String code) validate;
+
+  @override
+  State<_CheckoutDialog> createState() => _CheckoutDialogState();
+}
+
+class _CheckoutDialogState extends State<_CheckoutDialog> {
+  final _code = TextEditingController();
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirm() async {
+    setState(() => _busy = true);
+    final code = _code.text.trim().toUpperCase();
+    final error = await widget.validate(code);
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.pop(context, code);
+    } else {
+      setState(() {
+        _error = error;
+        _busy = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      icon: const Icon(Icons.payments_outlined, size: 36),
+      title: const Text('Checkout'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Pay ${formatPrice(widget.total)} for ${widget.itemCount} item(s)?',
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _code,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: 'Affiliate code (optional)',
+              prefixIcon: const Icon(Icons.card_giftcard_rounded),
+              errorText: _error,
+            ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            onSubmitted: (_) => _confirm(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+          onPressed: _busy ? null : _confirm,
+          child: const Text('Confirm'),
+        ),
+      ],
     );
   }
 }

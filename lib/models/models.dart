@@ -31,6 +31,9 @@ class AppUser {
   /// Shop name, set for sellers.
   final String? shopName;
 
+  /// The code this account shares to earn affiliate commission.
+  final String? refCode;
+
   const AppUser({
     this.id,
     required this.fullName,
@@ -38,6 +41,7 @@ class AppUser {
     required this.passwordHash,
     this.role = UserRole.customer,
     this.shopName,
+    this.refCode,
   });
 
   bool get isAdmin => role == UserRole.admin;
@@ -55,6 +59,7 @@ class AppUser {
     passwordHash: map['password_hash'] as String,
     role: UserRole.fromName(map['role'] as String?),
     shopName: map['shop_name'] as String?,
+    refCode: map['ref_code'] as String?,
   );
 
   Map<String, Object?> toMap() => {
@@ -64,6 +69,7 @@ class AppUser {
     'password_hash': passwordHash,
     'role': role.name,
     'shop_name': shopName,
+    if (refCode != null) 'ref_code': refCode,
   };
 }
 
@@ -82,6 +88,11 @@ class Product {
   /// The owning shop's name, read from the seller; never stored on the product.
   final String? shopName;
 
+  /// Percent of each sale paid to the affiliate who referred the buyer.
+  final double commissionRate;
+
+  static const defaultCommissionRate = 5.0;
+
   const Product({
     this.id,
     required this.name,
@@ -90,6 +101,7 @@ class Product {
     this.image,
     this.sellerId,
     this.shopName,
+    this.commissionRate = defaultCommissionRate,
   });
 
   factory Product.fromMap(Map<String, Object?> map) => Product(
@@ -100,6 +112,8 @@ class Product {
     image: map['image'] as String?,
     sellerId: map['seller_id'] as int?,
     shopName: map['shop_name'] as String?,
+    commissionRate:
+        (map['commission_rate'] as num?)?.toDouble() ?? defaultCommissionRate,
   );
 
   Map<String, Object?> toMap() => {
@@ -109,6 +123,7 @@ class Product {
     'price': price,
     'image': image,
     'seller_id': sellerId,
+    'commission_rate': commissionRate,
   };
 
   Product copyWith({
@@ -118,6 +133,7 @@ class Product {
     double? price,
     String? image,
     int? sellerId,
+    double? commissionRate,
   }) => Product(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -126,6 +142,7 @@ class Product {
     image: image ?? this.image,
     sellerId: sellerId ?? this.sellerId,
     shopName: shopName,
+    commissionRate: commissionRate ?? this.commissionRate,
   );
 }
 
@@ -151,6 +168,9 @@ class OrderRecord {
   /// Which shop sold this part; filled in the admin per-shop view.
   final String? shopName;
 
+  /// Affiliate commission on this order (or this shop's part of it).
+  final double commission;
+
   const OrderRecord({
     required this.id,
     required this.total,
@@ -158,6 +178,7 @@ class OrderRecord {
     required this.itemCount,
     this.customerName,
     this.shopName,
+    this.commission = 0,
   });
 
   factory OrderRecord.fromMap(Map<String, Object?> map) => OrderRecord(
@@ -167,5 +188,14 @@ class OrderRecord {
     itemCount: (map['item_count'] as num?)?.toInt() ?? 0,
     customerName: map['customer_name'] as String?,
     shopName: map['shop_name'] as String?,
+    commission: (map['commission'] as num?)?.toDouble() ?? 0,
   );
 }
+
+/// One affiliate's results, for the admin leaderboard.
+typedef AffiliateSummary = ({
+  String name,
+  String code,
+  int orders,
+  double commission,
+});
