@@ -40,6 +40,26 @@ flutter run
 
 Register a new account on first launch; 5 sample products are seeded automatically.
 
+## SePay bank-transfer checkout (optional)
+
+Without configuration, Checkout places the order right after the confirm dialog.
+With SePay configured, Checkout shows a VietQR code with a unique transfer note
+(`PRM<timestamp>`), polls the SePay transactions API every 5 seconds, and places
+the order only when a transfer with that note and at least the order total arrives
+(10-minute timeout, cancel anytime).
+
+1. Copy `sepay.example.json` to `sepay.json` (git-ignored) and fill in your bank
+   code (e.g. `VCB`, `MB`, `TCB`), account number linked to SePay, and the API
+   token from my.sepay.vn → Company configuration → API Access.
+2. Run with:
+
+```bash
+flutter run --dart-define-from-file=sepay.json
+```
+
+Note: the token is compiled into the app, which is fine for a demo but not for a
+public release; production apps should check payments from a backend or webhook.
+
 ## Test
 
 ```bash

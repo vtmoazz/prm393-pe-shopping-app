@@ -1,0 +1,5 @@
+{
+  "SEPAY_BANK": "VCB",
+  "SEPAY_ACCOUNT": "0123456789",
+  "SEPAY_TOKEN": "paste-your-sepay-api-token"
+}

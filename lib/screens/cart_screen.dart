@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../models/models.dart';
 import '../providers/cart_provider.dart';
+import '../services/sepay_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/revenue.dart';
 import '../widgets/decor.dart';
 import '../widgets/product_image.dart';
+import 'sepay_payment_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -65,6 +67,21 @@ class CartScreen extends StatelessWidget {
       ),
     );
     if (ok != true || !context.mounted) return;
+
+    // With SePay configured the order is placed only after the bank transfer
+    // arrives; without it, checkout stays a local confirmation.
+    final sepay = SePayConfig.fromEnvironment();
+    if (sepay.isConfigured) {
+      final paid = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => SePayPaymentScreen(
+            service: SePayService(sepay),
+            amount: total.round(),
+          ),
+        ),
+      );
+      if (paid != true || !context.mounted) return;
+    }
 
     final orderId = await cart.checkout();
     if (!context.mounted || orderId == null) return;
