@@ -98,9 +98,11 @@ class CartScreen extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
+                    flex: 3,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(0, 50),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                       ),
                       onPressed: () {
                         Navigator.pop(ctx);
@@ -111,6 +113,7 @@ class CartScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
+                    flex: 2,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(0, 50),

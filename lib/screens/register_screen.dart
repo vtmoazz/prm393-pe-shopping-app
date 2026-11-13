@@ -106,6 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 GlassPanel(
                   child: Form(
                     key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

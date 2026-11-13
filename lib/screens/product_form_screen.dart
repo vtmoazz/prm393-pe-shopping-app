@@ -104,6 +104,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

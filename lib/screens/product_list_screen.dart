@@ -216,7 +216,7 @@ class _Header extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '$productCount products waiting for you',
+                          '$productCount ${productCount == 1 ? 'product' : 'products'} waiting for you',
                           style: text.bodySmall?.copyWith(
                             color: Colors.white70,
                           ),
